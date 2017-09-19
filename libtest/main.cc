@@ -297,7 +297,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
       }
 
-      std::auto_ptr<libtest::Framework> frame(new libtest::Framework(signal, binary_name, collection_to_run, wildcard));
+      std::unique_ptr<libtest::Framework> frame(new libtest::Framework(signal, binary_name, collection_to_run, wildcard));
 
       // Run create(), bail on error.
       {
