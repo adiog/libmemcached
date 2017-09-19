@@ -871,6 +871,18 @@ public:
     return true;
   }
 
+  /**
+   * Updates an object with the specified expiration time.
+   *
+   * @param[in] key key of object to update
+   * @param[in] expiration time to keep the objects stored in server for
+   * @return true on success; false otherwise
+   */
+  bool touch(const std::string& key, time_t expiration)
+  {
+    return memcached_success(memcached_touch(memc_, key.c_str(), key.length(), expiration));
+  }
+
 private:
   memcached_st *memc_;
 };
