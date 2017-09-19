@@ -9,7 +9,7 @@
  *
  */
 
-#include "config.h"
+#include "mem_config.h"
 
 #include <stdio.h>
 #include <inttypes.h>
@@ -20,16 +20,15 @@
 #include <netinet/tcp.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#if TIME_WITH_SYS_TIME
+
+#if defined(HAVE_SYS_TIME_H)
 # include <sys/time.h>
-# include <time.h>
-#else
-# if HAVE_SYS_TIME_H
-#  include <sys/time.h>
-# else
-#  include <time.h>
-# endif
 #endif
+
+#if defined(HAVE_TIME_H)
+# include <time.h>
+#endif
+
 #include "ms_setting.h"
 #include "ms_thread.h"
 #include "ms_atomic.h"
@@ -224,7 +223,7 @@ static void ms_task_init(ms_conn_t *c)
  * @param c, pointer of the concurrency
  * @param is_udp, whether it's udp
  *
- * @return int, if success, return 0, else return -1
+ * @return int, if success, return EXIT_SUCCESS, else return -1
  */
 static int ms_conn_udp_init(ms_conn_t *c, const bool is_udp)
 {
@@ -260,7 +259,7 @@ static int ms_conn_udp_init(ms_conn_t *c, const bool is_udp)
     memset(c->udppkt, 0, MAX_UDP_PACKET * sizeof(ms_udppkt_t));
   }
 
-  return 0;
+  return EXIT_SUCCESS;
 } /* ms_conn_udp_init */
 
 
@@ -272,7 +271,7 @@ static int ms_conn_udp_init(ms_conn_t *c, const bool is_udp)
  * @param read_buffer_size
  * @param is_udp, whether it's udp
  *
- * @return int, if success, return 0, else return -1
+ * @return int, if success, return EXIT_SUCCESS, else return -1
  */
 static int ms_conn_init(ms_conn_t *c,
                         const int init_state,
@@ -358,7 +357,7 @@ static int ms_conn_init(ms_conn_t *c,
   c->mlget_task.mlget_num= 0;
   c->mlget_task.value_index= -1;         /* default invalid value */
 
-  if (ms_setting.binary_prot)
+  if (ms_setting.binary_prot_)
   {
     c->protocol= binary_prot;
   }
@@ -381,7 +380,7 @@ static int ms_conn_init(ms_conn_t *c,
     atomic_add_32(&ms_stats.active_conns, 1);
   }
 
-  return 0;
+  return EXIT_SUCCESS;
 } /* ms_conn_init */
 
 
@@ -414,7 +413,7 @@ static void ms_warmup_num_init(ms_conn_t *c)
  *
  * @param c, pointer of the concurrency
  *
- * @return int, if success, return 0, else return -1
+ * @return int, if success, return EXIT_SUCCESS, else return -1
  */
 static int ms_item_win_init(ms_conn_t *c)
 {
@@ -458,7 +457,7 @@ static int ms_item_win_init(ms_conn_t *c)
 
   ms_warmup_num_init(c);
 
-  return 0;
+  return EXIT_SUCCESS;
 } /* ms_item_win_init */
 
 
@@ -469,7 +468,7 @@ static int ms_item_win_init(ms_conn_t *c)
  *
  * @param c, pointer of the concurrency
  *
- * @return int, if success, return 0, else return -1
+ * @return int, if success, return EXIT_SUCCESS, else return -1
  */
 static int ms_conn_sock_init(ms_conn_t *c)
 {
@@ -553,7 +552,7 @@ static int ms_conn_sock_init(ms_conn_t *c)
     return -1;
   }
 
-  return 0;
+  return EXIT_SUCCESS;
 } /* ms_conn_sock_init */
 
 
@@ -563,7 +562,7 @@ static int ms_conn_sock_init(ms_conn_t *c)
  *
  * @param c, pointer of the concurrency
  *
- * @return int, if success, return 0, else return -1
+ * @return int, if success, return EXIT_SUCCESS, else return -1
  */
 static int ms_conn_event_init(ms_conn_t *c)
 {
@@ -579,7 +578,7 @@ static int ms_conn_event_init(ms_conn_t *c)
     return -1;
   }
 
-  return 0;
+  return EXIT_SUCCESS;
 } /* ms_conn_event_init */
 
 
@@ -589,7 +588,7 @@ static int ms_conn_event_init(ms_conn_t *c)
  *
  * @param c, pointer of the concurrency
  *
- * @return int, if success, return 0, else return -1
+ * @return int, if success, return EXIT_SUCCESS, else return -1
  */
 int ms_setup_conn(ms_conn_t *c)
 {
@@ -613,7 +612,7 @@ int ms_setup_conn(ms_conn_t *c)
     return -1;
   }
 
-  return 0;
+  return EXIT_SUCCESS;
 } /* ms_setup_conn */
 
 
@@ -707,7 +706,7 @@ static void ms_conn_close(ms_conn_t *c)
  *
  * @param ai, server address information
  *
- * @return int, if success, return 0, else return -1
+ * @return int, if success, return EXIT_SUCCESS, else return -1
  */
 static int ms_new_socket(struct addrinfo *ai)
 {
@@ -731,6 +730,7 @@ static int ms_new_socket(struct addrinfo *ai)
 static void ms_maximize_sndbuf(const int sfd)
 {
   socklen_t intsize= sizeof(int);
+  unsigned int last_good= 0;
   unsigned int min, max, avg;
   unsigned int old_size;
 
@@ -750,6 +750,7 @@ static void ms_maximize_sndbuf(const int sfd)
     avg= ((unsigned int)(min + max)) / 2;
     if (setsockopt(sfd, SOL_SOCKET, SO_SNDBUF, (void *)&avg, intsize) == 0)
     {
+      last_good= avg;
       min= avg + 1;
     }
     else
@@ -757,6 +758,7 @@ static void ms_maximize_sndbuf(const int sfd)
       max= avg - 1;
     }
   }
+  (void)last_good;
 } /* ms_maximize_sndbuf */
 
 
@@ -769,7 +771,7 @@ static void ms_maximize_sndbuf(const int sfd)
  * @param is_udp, whether it's udp
  * @param ret_sfd, the connected socket file descriptor
  *
- * @return int, if success, return 0, else return -1
+ * @return int, if success, return EXIT_SUCCESS, else return -1
  */
 static int ms_network_connect(ms_conn_t *c,
                               char *srv_host_name,
@@ -892,7 +894,7 @@ static int ms_network_connect(ms_conn_t *c,
  *
  * @param c, pointer of the concurrency
  *
- * @return int, if success, return 0, else return -1
+ * @return int, if success, return EXIT_SUCCESS, else return -1
  */
 static int ms_reconn(ms_conn_t *c)
 {
@@ -982,7 +984,7 @@ static int ms_reconn(ms_conn_t *c)
     c->alive_sfds--;
   }
 
-  return 0;
+  return EXIT_SUCCESS;
 } /* ms_reconn */
 
 
@@ -994,7 +996,7 @@ static int ms_reconn(ms_conn_t *c)
  *
  * @param c, pointer of the concurrency
  *
- * @return int, if success, return 0, else return -1
+ * @return int, if success, return EXIT_SUCCESS, else return -1
  */
 int ms_reconn_socks(ms_conn_t *c)
 {
@@ -1008,7 +1010,7 @@ int ms_reconn_socks(ms_conn_t *c)
 
   if ((c->total_sfds == 1) || (c->total_sfds == c->alive_sfds))
   {
-    return 0;
+    return EXIT_SUCCESS;
   }
 
   for (uint32_t i= 0; i < c->total_sfds; i++)
@@ -1063,7 +1065,7 @@ int ms_reconn_socks(ms_conn_t *c)
     }
   }
 
-  return 0;
+  return EXIT_SUCCESS;
 } /* ms_reconn_socks */
 
 
@@ -1135,7 +1137,7 @@ static int ms_tokenize_command(char *command,
  * @param c, pointer of the concurrency
  * @param command, the string responded by server
  *
- * @return int, if the command completed return 0, else return
+ * @return int, if the command completed return EXIT_SUCCESS, else return
  *         -1
  */
 static int ms_ascii_process_line(ms_conn_t *c, char *command)
@@ -1158,7 +1160,12 @@ static int ms_ascii_process_line(ms_conn_t *c, char *command)
     {
       token_t tokens[MAX_TOKENS];
       ms_tokenize_command(command, tokens, MAX_TOKENS);
+      errno= 0;
       value_len= strtol(tokens[VALUELEN_TOKEN].value, NULL, 10);
+      if (errno != 0)
+      {
+        printf("<%d ERROR %s\n", c->sfd, strerror(errno));
+      }
       c->currcmd.key_prefix= *(uint64_t *)tokens[KEY_TOKEN].value;
 
       /*
@@ -1310,7 +1317,7 @@ void ms_reset_conn(ms_conn_t *c, bool timeout)
  *
  * @param c, pointer of the concurrency
  *
- * @return int, if success, return 0, else return -1
+ * @return int, if success, return EXIT_SUCCESS, else return -1
  */
 static int ms_try_read_line(ms_conn_t *c)
 {
@@ -1320,7 +1327,7 @@ static int ms_try_read_line(ms_conn_t *c)
     if ((uint64_t)c->rbytes < sizeof(c->binary_header))
     {
       /* need more data! */
-      return 0;
+      return EXIT_SUCCESS;
     }
     else
     {
@@ -1350,7 +1357,7 @@ static int ms_try_read_line(ms_conn_t *c)
         fprintf(stderr, "Invalid magic:  %x\n",
                 c->binary_header.response.magic);
         ms_conn_set_state(c, conn_closing);
-        return 0;
+        return EXIT_SUCCESS;
       }
 
       /* process this complete response */
@@ -1375,11 +1382,11 @@ static int ms_try_read_line(ms_conn_t *c)
     assert(c->rcurr <= (c->rbuf + c->rsize));
 
     if (c->rbytes == 0)
-      return 0;
+      return EXIT_SUCCESS;
 
     el= memchr(c->rcurr, '\n', (size_t)c->rbytes);
     if (! el)
-      return 0;
+      return EXIT_SUCCESS;
 
     cont= el + 1;
     if (((el - c->rcurr) > 1) && (*(el - 1) == '\r'))
@@ -1428,6 +1435,7 @@ static int ms_sort_udp_packet(ms_conn_t *c, char *buf, int rbytes)
   int wbytes= 0;
   uint16_t req_id= 0;
   uint16_t seq_num= 0;
+  uint16_t packets= 0;
   unsigned char *header= NULL;
 
   /* no enough data */
@@ -1459,6 +1467,7 @@ static int ms_sort_udp_packet(ms_conn_t *c, char *buf, int rbytes)
     req_id= (uint16_t)HEADER_TO_REQID(header);
     assert(req_id == c->request_id % (1 << 16));
 
+    packets= (uint16_t)HEADER_TO_PACKETS(header);
     assert(c->packets == HEADER_TO_PACKETS(header));
 
     seq_num= (uint16_t)HEADER_TO_SEQNUM(header);
@@ -1540,6 +1549,7 @@ static int ms_sort_udp_packet(ms_conn_t *c, char *buf, int rbytes)
       break;
     }
   }
+  (void)packets;
 
   return wbytes == 0 ? -1 : wbytes;
 } /* ms_sort_udp_packet */
@@ -1631,7 +1641,7 @@ static int ms_udp_read(ms_conn_t *c, char *buf, int len)
  * close.
  * before reading, move the remaining incomplete fragment of a command
  * (if any) to the beginning of the buffer.
- * return 0 if there's nothing to read on the first read.
+ * return EXIT_SUCCESS if there's nothing to read on the first read.
  */
 
 /**
@@ -1642,8 +1652,8 @@ static int ms_udp_read(ms_conn_t *c, char *buf, int len)
  * @param c, pointer of the concurrency
  *
  * @return int,
- *         return 0 if there's nothing to read on the first read.
- *         return 1 if get data
+ *         return EXIT_SUCCESS if there's nothing to read on the first read.
+ *         return EXIT_FAILURE if get data
  *         return -1 if error happens
  */
 static int ms_try_read_network(ms_conn_t *c)
@@ -2009,7 +2019,7 @@ static void ms_complete_nread(ms_conn_t *c)
  *
  * @param c, pointer of the concurrency
  *
- * @return int, if success, return 0, else return -1
+ * @return int, if success, return EXIT_SUCCESS, else return -1
  */
 static int ms_add_msghdr(ms_conn_t *c)
 {
@@ -2053,7 +2063,7 @@ static int ms_add_msghdr(ms_conn_t *c)
     return ms_add_iov(c, NULL, UDP_HEADER_SIZE);
   }
 
-  return 0;
+  return EXIT_SUCCESS;
 } /* ms_add_msghdr */
 
 
@@ -2063,7 +2073,7 @@ static int ms_add_msghdr(ms_conn_t *c)
  *
  * @param c, pointer of the concurrency
  *
- * @return int, if success, return 0, else return -1
+ * @return int, if success, return EXIT_SUCCESS, else return -1
  */
 static int ms_ensure_iov_space(ms_conn_t *c)
 {
@@ -2090,7 +2100,7 @@ static int ms_ensure_iov_space(ms_conn_t *c)
     }
   }
 
-  return 0;
+  return EXIT_SUCCESS;
 } /* ms_ensure_iov_space */
 
 
@@ -2102,7 +2112,7 @@ static int ms_ensure_iov_space(ms_conn_t *c)
  * @param buf, the buffer includes data to send
  * @param len, the data length in the buffer
  *
- * @return int, if success, return 0, else return -1
+ * @return int, if success, return EXIT_SUCCESS, else return -1
  */
 static int ms_add_iov(ms_conn_t *c, const void *buf, int len)
 {
@@ -2121,6 +2131,7 @@ static int ms_add_iov(ms_conn_t *c, const void *buf, int len)
      */
     limit_to_mtu= c->udp;
 
+#ifdef IOV_MAX
     /* We may need to start a new msghdr if this one is full. */
     if ((m->msg_iovlen == IOV_MAX)
         || (limit_to_mtu && (c->msgbytes >= UDP_MAX_SEND_PAYLOAD_SIZE)))
@@ -2128,6 +2139,7 @@ static int ms_add_iov(ms_conn_t *c, const void *buf, int len)
       ms_add_msghdr(c);
       m= &c->msglist[c->msgused - 1];
     }
+#endif
 
     if (ms_ensure_iov_space(c) != 0)
       return -1;
@@ -2156,7 +2168,7 @@ static int ms_add_iov(ms_conn_t *c, const void *buf, int len)
   }
   while (leftover > 0);
 
-  return 0;
+  return EXIT_SUCCESS;
 } /* ms_add_iov */
 
 
@@ -2165,7 +2177,7 @@ static int ms_add_iov(ms_conn_t *c, const void *buf, int len)
  *
  * @param c, pointer of the concurrency
  *
- * @return int, if success, return 0, else return -1
+ * @return int, if success, return EXIT_SUCCESS, else return -1
  */
 static int ms_build_udp_headers(ms_conn_t *c)
 {
@@ -2216,7 +2228,7 @@ static int ms_build_udp_headers(ms_conn_t *c)
             + UDP_HEADER_SIZE));
   }
 
-  return 0;
+  return EXIT_SUCCESS;
 } /* ms_build_udp_headers */
 
 
@@ -2461,9 +2473,7 @@ static bool ms_need_yield(ms_conn_t *c)
   {
     gettimeofday(&curr_time, NULL);
     time_diff= ms_time_diff(&ms_thread->startup_time, &curr_time);
-    tps=
-      (int64_t)((task->get_opt
-                 + task->set_opt) / ((uint64_t)time_diff / 1000000));
+    tps= (int64_t)(((task->get_opt + task->set_opt) / (uint64_t)time_diff) * 1000000);
 
     /* current throughput is greater than expected throughput */
     if (tps > ms_thread->thread_ctx->tps_perconn)
@@ -2721,7 +2731,7 @@ void ms_event_handler(const int fd, const short which, void *arg)
  * @param c, pointer of the concurrency
  * @param cmd, command(get or set )
  *
- * @return int, if success, return the index, else return 0
+ * @return int, if success, return the index, else return EXIT_SUCCESS
  */
 static uint32_t ms_get_rep_sock_index(ms_conn_t *c, int cmd)
 {
@@ -2730,7 +2740,7 @@ static uint32_t ms_get_rep_sock_index(ms_conn_t *c, int cmd)
 
   if (c->total_sfds == 1)
   {
-    return 0;
+    return EXIT_SUCCESS;
   }
 
   if (ms_setting.rep_write_srv == 0)
@@ -2799,7 +2809,7 @@ static uint32_t ms_get_next_sock_index(ms_conn_t *c)
  *
  * @param c, pointer of the concurrency
  *
- * @return int, if success, return 0, else return -1
+ * @return int, if success, return EXIT_SUCCESS, else return -1
  */
 static int ms_update_conn_sock_event(ms_conn_t *c)
 {
@@ -2863,7 +2873,7 @@ static int ms_update_conn_sock_event(ms_conn_t *c)
     }
   }
 
-  return 0;
+  return EXIT_SUCCESS;
 } /* ms_update_conn_sock_event */
 
 
@@ -2875,7 +2885,7 @@ static int ms_update_conn_sock_event(ms_conn_t *c)
  * @param item, pointer of task item which includes the object
  *            information
  *
- * @return int, if success, return 0, else return -1
+ * @return int, if success, return EXIT_SUCCESS, else return -1
  */
 static int ms_build_ascii_write_buf_set(ms_conn_t *c, ms_task_item_t *item)
 {
@@ -2920,7 +2930,7 @@ static int ms_build_ascii_write_buf_set(ms_conn_t *c, ms_task_item_t *item)
     return -1;
   }
 
-  return 0;
+  return EXIT_SUCCESS;
 } /* ms_build_ascii_write_buf_set */
 
 
@@ -2931,7 +2941,7 @@ static int ms_build_ascii_write_buf_set(ms_conn_t *c, ms_task_item_t *item)
  * @param item, pointer of task item which includes the object
  *            information
  *
- * @return int, if success, return 0, else return -1
+ * @return int, if success, return EXIT_SUCCESS, else return -1
  */
 int ms_mcd_set(ms_conn_t *c, ms_task_item_t *item)
 {
@@ -2975,7 +2985,7 @@ int ms_mcd_set(ms_conn_t *c, ms_task_item_t *item)
                   item->key_size + item->value_size);
   atomic_add_size(&ms_stats.cmd_set, 1);
 
-  return 0;
+  return EXIT_SUCCESS;
 } /* ms_mcd_set */
 
 
@@ -2987,7 +2997,7 @@ int ms_mcd_set(ms_conn_t *c, ms_task_item_t *item)
  * @param item, pointer of task item which includes the object
  *            information
  *
- * @return int, if success, return 0, else return -1
+ * @return int, if success, return EXIT_SUCCESS, else return -1
  */
 static int ms_build_ascii_write_buf_get(ms_conn_t *c, ms_task_item_t *item)
 {
@@ -3002,7 +3012,7 @@ static int ms_build_ascii_write_buf_get(ms_conn_t *c, ms_task_item_t *item)
     return -1;
   }
 
-  return 0;
+  return EXIT_SUCCESS;
 } /* ms_build_ascii_write_buf_get */
 
 
@@ -3013,7 +3023,7 @@ static int ms_build_ascii_write_buf_get(ms_conn_t *c, ms_task_item_t *item)
  * @param item, pointer of task item which includes the object
  *            information
  *
- * @return int, if success, return 0, else return -1
+ * @return int, if success, return EXIT_SUCCESS, else return -1
  */
 int ms_mcd_get(ms_conn_t *c, ms_task_item_t *item)
 {
@@ -3055,7 +3065,7 @@ int ms_mcd_get(ms_conn_t *c, ms_task_item_t *item)
 
   atomic_add_size(&ms_stats.cmd_get, 1);
 
-  return 0;
+  return EXIT_SUCCESS;
 } /* ms_mcd_get */
 
 
@@ -3065,7 +3075,7 @@ int ms_mcd_get(ms_conn_t *c, ms_task_item_t *item)
  *
  * @param c, pointer of the concurrency
  *
- * @return int, if success, return 0, else return -1
+ * @return int, if success, return EXIT_SUCCESS, else return -1
  */
 static int ms_build_ascii_write_buf_mlget(ms_conn_t *c)
 {
@@ -3096,7 +3106,7 @@ static int ms_build_ascii_write_buf_mlget(ms_conn_t *c)
     return -1;
   }
 
-  return 0;
+  return EXIT_SUCCESS;
 } /* ms_build_ascii_write_buf_mlget */
 
 
@@ -3105,11 +3115,11 @@ static int ms_build_ascii_write_buf_mlget(ms_conn_t *c)
  *
  * @param c, pointer of the concurrency
  *
- * @return int, if success, return 0, else return -1
+ * @return int, if success, return EXIT_SUCCESS, else return -1
  */
 int ms_mcd_mlget(ms_conn_t *c)
 {
-  /* ms_task_item_t *item; */
+  ms_task_item_t *item;
 
   assert(c != NULL);
   assert(c->mlget_task.mlget_num >= 1);
@@ -3151,11 +3161,13 @@ int ms_mcd_mlget(ms_conn_t *c)
   /* decrease operation time of each item */
   for (int i= 0; i < c->mlget_task.mlget_num; i++)
   {
-    /* item= c->mlget_task.mlget_item[i].item; */
+    item= c->mlget_task.mlget_item[i].item;
     atomic_add_size(&ms_stats.cmd_get, 1);
   }
 
-  return 0;
+  (void)item;
+
+  return EXIT_SUCCESS;
 } /* ms_mcd_mlget */
 
 
@@ -3168,7 +3180,7 @@ int ms_mcd_mlget(ms_conn_t *c)
  *
  * @param c, pointer of the concurrency
  *
- * @return int, if success, return 0, else return -1
+ * @return int, if success, return EXIT_SUCCESS, else return -1
  */
 static int ms_bin_process_response(ms_conn_t *c)
 {
@@ -3184,7 +3196,7 @@ static int ms_bin_process_response(ms_conn_t *c)
   {
     c->rvbytes= (int32_t)bodylen;
     c->readval= true;
-    return 1;
+    return EXIT_FAILURE;
   }
   else
   {
@@ -3251,7 +3263,7 @@ static int ms_bin_process_response(ms_conn_t *c)
     }
   }
 
-  return 0;
+  return EXIT_SUCCESS;
 } /* ms_bin_process_response */
 
 
@@ -3284,7 +3296,7 @@ static void ms_add_bin_header(ms_conn_t *c,
 
   header->request.extlen= (uint8_t)hdr_len;
   header->request.datatype= (uint8_t)PROTOCOL_BINARY_RAW_BYTES;
-  header->request.reserved= 0;
+  header->request.vbucket= 0;
 
   header->request.bodylen= htonl(body_len);
   header->request.opaque= 0;
@@ -3317,7 +3329,7 @@ static void ms_add_key_to_iov(ms_conn_t *c, ms_task_item_t *item)
  * @param item, pointer of task item which includes the object
  *            information
  *
- * @return int, if success, return 0, else return -1
+ * @return int, if success, return EXIT_SUCCESS, else return -1
  */
 static int ms_build_bin_write_buf_set(ms_conn_t *c, ms_task_item_t *item)
 {
@@ -3349,7 +3361,7 @@ static int ms_build_bin_write_buf_set(ms_conn_t *c, ms_task_item_t *item)
   }
   ms_add_iov(c, &ms_setting.char_block[value_offset], item->value_size);
 
-  return 0;
+  return EXIT_SUCCESS;
 } /* ms_build_bin_write_buf_set */
 
 
@@ -3361,7 +3373,7 @@ static int ms_build_bin_write_buf_set(ms_conn_t *c, ms_task_item_t *item)
  * @param item, pointer of task item which includes the object
  *            information
  *
- * @return int, if success, return 0, else return -1
+ * @return int, if success, return EXIT_SUCCESS, else return -1
  */
 static int ms_build_bin_write_buf_get(ms_conn_t *c, ms_task_item_t *item)
 {
@@ -3371,7 +3383,7 @@ static int ms_build_bin_write_buf_get(ms_conn_t *c, ms_task_item_t *item)
                     (uint32_t)item->key_size);
   ms_add_key_to_iov(c, item);
 
-  return 0;
+  return EXIT_SUCCESS;
 } /* ms_build_bin_write_buf_get */
 
 
@@ -3383,7 +3395,7 @@ static int ms_build_bin_write_buf_get(ms_conn_t *c, ms_task_item_t *item)
  * @param item, pointer of task item which includes the object
  *            information
  *
- * @return int, if success, return 0, else return -1
+ * @return int, if success, return EXIT_SUCCESS, else return -1
  */
 static int ms_build_bin_write_buf_mlget(ms_conn_t *c)
 {
@@ -3407,5 +3419,5 @@ static int ms_build_bin_write_buf_mlget(ms_conn_t *c)
 
   c->wcurr= c->wbuf;
 
-  return 0;
+  return EXIT_SUCCESS;
 } /* ms_build_bin_write_buf_mlget */

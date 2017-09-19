@@ -68,3 +68,5 @@ tests/testhashkit
 tests/testplus
 tests/testudp
 unittests/unittests
+.idea
+cmake-build-debug

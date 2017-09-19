@@ -1,6 +1,7 @@
 /*
  * An example file showing the usage of the C++ libmemcached interface.
  */
+#include <mem_config.h>
 
 #include <vector>
 #include <string>
@@ -168,7 +169,7 @@ void setProduct(const string &key, const Product &product)
 
 int main()
 {
-  Memcache first_client("--SERVER=127.0.0.1:19191");
+  Memcache first_client("127.0.0.1:19191");
   map< string, map<string, string> > my_stats;
   first_client.getStats(my_stats);
   
@@ -190,5 +191,5 @@ int main()
     ++it;
   }
 
-  return 0;
+  return EXIT_SUCCESS;
 }
