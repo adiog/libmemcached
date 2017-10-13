@@ -12,8 +12,8 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 configure_file(mem_config.in mem_config.h)
 
-FILE(GLOB_RECURSE PROJECT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/libmemcached/**.cc)
-ADD_LIBRARY(libmemcached ${PROJECT_SOURCES})
-#TARGET_LINK_LIBRARIES(libmemcached dl antlr4-runtime)
-
+FILE(GLOB_RECURSE PROJECT_C_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/libmemcached/**.c)
+FILE(GLOB_RECURSE PROJECT_CC_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/libmemcached/**.cc)
+ADD_LIBRARY(memcached ${PROJECT_C_SOURCES} ${PROJECT_CC_SOURCES})
+TARGET_LINK_LIBRARIES(memcached hashkit ssl sasl2)
 
