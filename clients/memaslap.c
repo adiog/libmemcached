@@ -18,6 +18,8 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <limits.h>
+#include <memlimits.h>
+#include <limits.h>
 
 #if defined(HAVE_SYS_TIME_H)
 # include <sys/time.h>

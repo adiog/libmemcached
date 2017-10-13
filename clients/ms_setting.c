@@ -15,6 +15,7 @@
 
 #include <ctype.h>
 #include <inttypes.h>
+#include <memlimits.h>
 #include <limits.h>
 #include <pwd.h>
 #include <strings.h>

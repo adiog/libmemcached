@@ -13,7 +13,7 @@
 
 #include <stdio.h>
 #include <inttypes.h>
-#include <limits.h>
+#include <memlimits.h>
 #include <sys/uio.h>
 #include <event.h>
 #include <fcntl.h>

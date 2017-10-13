@@ -59,7 +59,7 @@
 #include <libmemcached-1.0/configure.h>
 #include <libmemcached-1.0/platform.h>
 
-#include <libmemcached-1.0/limits.h>
+#include <libmemcached-1.0/memlimits.h>
 #include <libmemcached-1.0/defaults.h>
 
 #include <libmemcached-1.0/types/behavior.h>
